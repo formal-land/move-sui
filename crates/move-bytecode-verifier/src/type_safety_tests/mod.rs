@@ -371,3 +371,63 @@ fn test_shl_shr_too_few_args() {
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
+
+
+#[test]
+fn test_or_and_correct_types() {
+    for instr in vec![
+        Bytecode::Or,
+        Bytecode::And,
+    ] {
+        let code = vec![Bytecode::LdFalse, Bytecode::LdTrue, instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_or_and_wrong_types() {
+    for instr in vec![
+        Bytecode::Or,
+        Bytecode::And,
+    ] {
+        let code = vec![Bytecode::LdU32(42), Bytecode::LdTrue, instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BOOLEAN_OP_TYPE_MISMATCH_ERROR
+        );
+
+        let code = vec![Bytecode::LdTrue, Bytecode::LdU64(42), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BOOLEAN_OP_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_or_and_too_few_args() {
+    for instr in vec![
+        Bytecode::Or,
+        Bytecode::And,
+    ] {
+        let code = vec![Bytecode::LdTrue, instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+
+        let code = vec![instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
