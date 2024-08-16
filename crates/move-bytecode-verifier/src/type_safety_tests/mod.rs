@@ -48,17 +48,26 @@ fn get_fun_context(module: &CompiledModule) -> FunctionContext {
 
 
 #[test]
-fn test_br_true_correct_type() {
-    let code = vec![Bytecode::LdTrue, Bytecode::BrTrue(0)];
+fn test_br_true_false_correct_type() {
+    for instr in vec![
+        Bytecode::BrTrue(0),
+        Bytecode::BrFalse(0),
+    ] {
+        let code = vec![Bytecode::LdTrue, instr];
     let module = make_module(code);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     assert!(result.is_ok());
 }
+}
 
 #[test]
-fn test_br_true_wrong_type() {
-    let code = vec![Bytecode::LdU32(0), Bytecode::BrTrue(0)];
+fn test_br_true_false_wrong_type() {
+    for instr in vec![
+        Bytecode::BrTrue(0),
+        Bytecode::BrFalse(0),
+    ] {
+        let code = vec![Bytecode::LdU32(0), instr];
     let module = make_module(code);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -66,46 +75,21 @@ fn test_br_true_wrong_type() {
         result.unwrap_err().major_status(),
         StatusCode::BR_TYPE_MISMATCH_ERROR
     );
+    }
 }
 
 #[test]
 #[should_panic]
-fn test_br_true_no_arg() {
-    let code = vec![Bytecode::BrTrue(0)];
+fn test_br_true_false_no_arg() {
+    for instr in vec![
+        Bytecode::BrTrue(0),
+        Bytecode::BrFalse(0),
+    ] {
+        let code = vec![instr];
     let module = make_module(code);
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-}
-
-
-#[test]
-fn test_br_false_correct_type() {
-    let code = vec![Bytecode::LdTrue, Bytecode::BrFalse(0)];
-    let module = make_module(code);
-    let fun_context = get_fun_context(&module);
-    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_br_false_wrong_type() {
-    let code = vec![Bytecode::LdU32(0), Bytecode::BrFalse(0)];
-    let module = make_module(code);
-    let fun_context = get_fun_context(&module);
-    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(
-        result.unwrap_err().major_status(),
-        StatusCode::BR_TYPE_MISMATCH_ERROR
-    );
-}
-
-#[test]
-#[should_panic]
-fn test_br_false_no_arg() {
-    let code = vec![Bytecode::BrFalse(0)];
-    let module = make_module(code);
-    let fun_context = get_fun_context(&module);
-    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
 }
 
 
