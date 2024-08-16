@@ -108,3 +108,34 @@ fn test_br_false_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
+
+#[test]
+fn test_abort_correct_type() {
+    let code = vec![Bytecode::LdU64(0), Bytecode::Abort];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+
+#[test]
+fn test_abort_wrong_type() {
+    let code = vec![Bytecode::LdU32(0), Bytecode::Abort];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::ABORT_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_abort_no_arg() {
+    let code = vec![Bytecode::Abort];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
