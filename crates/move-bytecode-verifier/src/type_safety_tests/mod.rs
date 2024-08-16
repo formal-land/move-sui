@@ -294,3 +294,80 @@ fn test_arithmetic_too_few_args() {
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
+
+
+#[test]
+fn test_shl_shr_correct_types() {
+    for instr in vec![
+        Bytecode::Shl,
+        Bytecode::Shr,
+    ] {
+        for push_ty_instr in vec![
+            Bytecode::LdU8(42),
+            Bytecode::LdU16(257),
+            Bytecode::LdU32(89),
+            Bytecode::LdU64(94),
+            Bytecode::LdU128(Box::new(9999)),
+            Bytecode::LdU256(Box::new(U256::from(745_u32))),
+        ] {
+            let code = vec![push_ty_instr.clone(), Bytecode::LdU8(2), instr.clone()];
+            let module = make_module(code);
+            let fun_context = get_fun_context(&module);
+            let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+            assert!(result.is_ok());
+        }
+    }
+}
+
+#[test]
+fn test_shl_shr_first_operand_wrong_type() {
+    for instr in vec![
+        Bytecode::Shl,
+        Bytecode::Shr,
+    ] {
+        let code = vec![Bytecode::LdTrue, Bytecode::LdU8(2), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::INTEGER_OP_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+fn test_shl_shr_second_operand_wrong_type() {
+    for instr in vec![
+        Bytecode::Shl,
+        Bytecode::Shr,
+    ] {
+        let code = vec![Bytecode::LdU32(42), Bytecode::LdU16(2), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::INTEGER_OP_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_shl_shr_too_few_args() {
+    for instr in vec![
+        Bytecode::Shl,
+        Bytecode::Shr,
+    ] {
+        let code = vec![Bytecode::LdU16(42), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+
+        let code = vec![instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
