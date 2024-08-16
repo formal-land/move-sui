@@ -54,11 +54,11 @@ fn test_br_true_false_correct_type() {
         Bytecode::BrFalse(0),
     ] {
         let code = vec![Bytecode::LdTrue, instr];
-    let module = make_module(code);
-    let fun_context = get_fun_context(&module);
-    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert!(result.is_ok());
-}
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
 }
 
 #[test]
@@ -68,13 +68,13 @@ fn test_br_true_false_wrong_type() {
         Bytecode::BrFalse(0),
     ] {
         let code = vec![Bytecode::LdU32(0), instr];
-    let module = make_module(code);
-    let fun_context = get_fun_context(&module);
-    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(
-        result.unwrap_err().major_status(),
-        StatusCode::BR_TYPE_MISMATCH_ERROR
-    );
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BR_TYPE_MISMATCH_ERROR
+        );
     }
 }
 
@@ -86,9 +86,9 @@ fn test_br_true_false_no_arg() {
         Bytecode::BrFalse(0),
     ] {
         let code = vec![instr];
-    let module = make_module(code);
-    let fun_context = get_fun_context(&module);
-    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
 
@@ -122,4 +122,62 @@ fn test_abort_no_arg() {
     let module = make_module(code);
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+
+#[test]
+fn test_cast_correct_type() {
+    for instr in vec![
+        Bytecode::CastU8,
+        Bytecode::CastU16,
+        Bytecode::CastU32,
+        Bytecode::CastU64,
+        Bytecode::CastU128,
+        Bytecode::CastU256,
+    ] {
+        let code = vec![Bytecode::LdU64(0), instr];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_cast_wrong_type() {
+    for instr in vec![
+        Bytecode::CastU8,
+        Bytecode::CastU16,
+        Bytecode::CastU32,
+        Bytecode::CastU64,
+        Bytecode::CastU128,
+        Bytecode::CastU256,
+    ] {
+        let code = vec![Bytecode::LdTrue, instr];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::INTEGER_OP_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_cast_no_arg() {
+    for instr in vec![
+        Bytecode::CastU8,
+        Bytecode::CastU16,
+        Bytecode::CastU32,
+        Bytecode::CastU64,
+        Bytecode::CastU128,
+        Bytecode::CastU256,
+    ] {
+        let code = vec![instr];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
 }
