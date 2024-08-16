@@ -431,3 +431,34 @@ fn test_or_and_too_few_args() {
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
+
+
+#[test]
+fn test_not_correct_type() {
+    let code = vec![Bytecode::LdFalse, Bytecode::Not];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_not_wrong_type() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::Not];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BOOLEAN_OP_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_not_no_arg() {
+    let code = vec![Bytecode::Not];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
