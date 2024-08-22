@@ -558,3 +558,19 @@ fn test_comparison_too_few_args() {
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
+
+
+// these operation does not produce errors in verify_instr()
+#[test]
+fn test_branch_nop_ok() {
+    for instr in vec![
+        Bytecode::Branch(0),
+        Bytecode::Nop,
+    ] {
+        let code = vec![instr];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
