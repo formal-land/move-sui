@@ -594,3 +594,18 @@ fn test_ld_integers_ok() {
     }
 }
 
+
+#[test]
+fn test_ld_true_false_ok() {
+    for instr in vec![
+        Bytecode::LdTrue,
+        Bytecode::LdFalse,
+    ] {
+        let code = vec![instr];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
