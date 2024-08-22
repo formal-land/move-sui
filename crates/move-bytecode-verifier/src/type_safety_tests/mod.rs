@@ -574,3 +574,23 @@ fn test_branch_nop_ok() {
         assert!(result.is_ok());
     }
 }
+
+
+#[test]
+fn test_ld_integers_ok() {
+    for instr in vec![
+        Bytecode::LdU8(42),
+        Bytecode::LdU16(257),
+        Bytecode::LdU32(89),
+        Bytecode::LdU64(94),
+        Bytecode::LdU128(Box::new(9999)),
+        Bytecode::LdU256(Box::new(U256::from(745_u32))),
+    ] {
+        let code = vec![instr];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
