@@ -4,11 +4,18 @@ use move_binary_format::file_format::{
     FunctionDefinitionIndex, empty_module
 };
 
-use move_core_types::u256::U256;
-use move_core_types::vm_status::StatusCode;
-use move_binary_format::CompiledModule;
+use move_core_types::{
+    u256::U256, vm_status::StatusCode,
+};
+
+use move_binary_format::{
+    CompiledModule,
+    file_format::{ConstantPoolIndex, Constant, SignatureToken},
+};
+
 use move_bytecode_verifier_meter::dummy::DummyMeter;
 use crate::absint::FunctionContext;
+use crate::constants;
 use crate::type_safety;
 
 
@@ -609,3 +616,18 @@ fn test_ld_true_false_ok() {
     }
 }
 
+
+#[test]
+fn test_ld_const_ok() {
+    let code = vec![Bytecode::LdConst(ConstantPoolIndex(0))];
+    let constant = Constant {
+        type_: SignatureToken::U32,
+        data: vec![42, 15, 17, 51],
+    };
+    let mut module: CompiledModule = make_module(code);
+    module.constant_pool.push(constant);
+    assert!(constants::verify_module(&module).is_ok());
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
