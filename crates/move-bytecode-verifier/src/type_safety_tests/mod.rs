@@ -691,3 +691,41 @@ fn test_pack_too_few_args() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+
+#[test]
+fn test_unpack_correct_types() {
+    let code = vec![
+        Bytecode::LdU32(42), Bytecode::LdTrue,
+        Bytecode::Pack(StructDefinitionIndex(0)),
+        Bytecode::Unpack(StructDefinitionIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_unpack_wrong_type() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::Unpack(StructDefinitionIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::UNPACK_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_unpack_no_arg() {
+    let code = vec![Bytecode::Unpack(StructDefinitionIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
