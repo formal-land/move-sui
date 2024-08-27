@@ -1,7 +1,5 @@
 use move_binary_format::file_format::{
-    Bytecode, CodeUnit, FunctionDefinition, FunctionHandle,
-    IdentifierIndex, ModuleHandleIndex, SignatureIndex,
-    FunctionDefinitionIndex, empty_module
+    empty_module, Bytecode, CodeUnit, FunctionDefinition, FunctionDefinitionIndex, FunctionHandle, IdentifierIndex, ModuleHandleIndex, SignatureIndex, StructDefinitionIndex
 };
 
 use move_core_types::{
@@ -10,7 +8,9 @@ use move_core_types::{
 
 use move_binary_format::{
     CompiledModule,
-    file_format::{ConstantPoolIndex, Constant, SignatureToken},
+    file_format::{
+        ConstantPoolIndex, Constant, SignatureToken, AbilitySet, StructHandle, TypeSignature, FieldDefinition, StructHandleIndex, StructFieldInformation, StructDefinition
+    },
 };
 
 use move_bytecode_verifier_meter::dummy::DummyMeter;
@@ -43,6 +43,32 @@ fn make_module(code: Vec<Bytecode>) -> CompiledModule {
     module.function_defs.push(fun_def);
 
     module
+}
+
+fn add_simple_struct(module: &mut CompiledModule) {
+    let struct_def = StructDefinition {
+        struct_handle: StructHandleIndex(0),
+        field_information: StructFieldInformation::Declared(vec![
+            FieldDefinition {
+                name: IdentifierIndex(5),
+                signature: TypeSignature(SignatureToken::U32),
+            },
+            FieldDefinition {
+                name: IdentifierIndex(6),
+                signature: TypeSignature(SignatureToken::Bool),
+            },
+        ]),
+    };
+
+    let struct_handle = StructHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        abilities: AbilitySet::EMPTY,
+        type_parameters: vec![],
+    };
+
+    module.struct_defs.push(struct_def);
+    module.struct_handles.push(struct_handle);
 }
 
 fn get_fun_context(module: &CompiledModule) -> FunctionContext {
@@ -630,4 +656,38 @@ fn test_ld_const_ok() {
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     assert!(result.is_ok());
+}
+
+
+#[test]
+fn test_pack_correct_types() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::LdTrue, Bytecode::Pack(StructDefinitionIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_pack_mismatched_types() {
+    let code = vec![Bytecode::LdTrue, Bytecode::LdU32(42), Bytecode::Pack(StructDefinitionIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::PACK_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_pack_too_few_args() {
+    let code = vec![Bytecode::LdTrue, Bytecode::Pack(StructDefinitionIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
