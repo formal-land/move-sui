@@ -71,6 +71,29 @@ fn add_simple_struct(module: &mut CompiledModule) {
     module.struct_handles.push(struct_handle);
 }
 
+fn add_simple_struct_with_abilities(module: &mut CompiledModule, abilities: AbilitySet) {
+    let struct_def = StructDefinition {
+        struct_handle: StructHandleIndex(0),
+        field_information: StructFieldInformation::Declared(vec![
+            FieldDefinition {
+                name: IdentifierIndex(5),
+                signature: TypeSignature(SignatureToken::U32),
+            },
+        ]),
+    };
+
+    let struct_handle = StructHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        abilities: abilities,
+        type_parameters: vec![],
+    };
+
+    module.struct_defs.push(struct_def);
+    module.struct_handles.push(struct_handle);
+}
+
+
 fn get_fun_context(module: &CompiledModule) -> FunctionContext {
     FunctionContext::new(
         &module,
@@ -728,4 +751,93 @@ fn test_unpack_no_arg() {
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+
+#[test]
+fn test_eq_neq_correct_types() {
+    for instr in vec![
+        Bytecode::Eq,
+        Bytecode::Neq,
+    ] {
+        let code = vec![Bytecode::LdU32(42), Bytecode::LdU32(42), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+
+        let code = vec![
+            Bytecode::LdU32(42),
+            Bytecode::Pack(StructDefinitionIndex(0)),
+            Bytecode::LdU32(51),
+            Bytecode::Pack(StructDefinitionIndex(0)),
+            instr.clone()
+        ];
+        let mut module = make_module(code);
+        add_simple_struct_with_abilities(&mut module, AbilitySet::PRIMITIVES);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_eq_neq_mismatched_types() {
+    for instr in vec![
+        Bytecode::Eq,
+        Bytecode::Neq,
+    ] {
+        let code = vec![Bytecode::LdU32(42), Bytecode::LdU64(42), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::EQUALITY_OP_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test] 
+fn test_eq_neq_no_drop() {
+    for instr in vec![
+        Bytecode::Eq,
+        Bytecode::Neq,
+    ] {
+        let code = vec![
+            Bytecode::LdU32(42),
+            Bytecode::Pack(StructDefinitionIndex(0)),
+            Bytecode::LdU32(51),
+            Bytecode::Pack(StructDefinitionIndex(0)),
+            instr.clone()
+        ];
+
+        let mut module = make_module(code);
+        add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::EQUALITY_OP_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_eq_neq_too_few_args() {
+    for instr in vec![
+        Bytecode::Eq,
+        Bytecode::Neq,
+    ] {
+        let code = vec![Bytecode::LdU32(42), instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+
+        let code = vec![instr.clone()];
+        let module = make_module(code);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
 }
