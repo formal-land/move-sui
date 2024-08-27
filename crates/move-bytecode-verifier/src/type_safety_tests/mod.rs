@@ -343,7 +343,22 @@ fn test_arithmetic_too_few_args() {
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
 
+#[test]
+#[should_panic]
+fn test_arithmetic_no_args() {
+    for instr in vec![
+        Bytecode::Add,
+        Bytecode::Sub,
+        Bytecode::Mul,
+        Bytecode::Mod,
+        Bytecode::Div,
+        Bytecode::BitOr,
+        Bytecode::BitAnd,
+        Bytecode::Xor,
+    ] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -421,6 +436,16 @@ fn test_shl_shr_too_few_args() {
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_shl_shr_no_args() {
+    for instr in vec![
+        Bytecode::Shl,
+        Bytecode::Shr,
+    ] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -480,7 +505,16 @@ fn test_or_and_too_few_args() {
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
 
+#[test]
+#[should_panic]
+fn test_or_and_no_args() {
+    for instr in vec![
+        Bytecode::Or,
+        Bytecode::And,
+    ] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -607,7 +641,18 @@ fn test_comparison_too_few_args() {
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
 
+#[test]
+#[should_panic]
+fn test_comparison_no_args() {
+    for instr in vec![
+        Bytecode::Lt,
+        Bytecode::Gt,
+        Bytecode::Le,
+        Bytecode::Ge,
+    ] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -834,7 +879,16 @@ fn test_eq_neq_too_few_args() {
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
 
+#[test]
+#[should_panic]
+fn test_eq_neq_no_args() {
+    for instr in vec![
+        Bytecode::Eq,
+        Bytecode::Neq,
+    ] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
