@@ -9,7 +9,7 @@ use move_core_types::{
 use move_binary_format::{
     CompiledModule,
     file_format::{
-        ConstantPoolIndex, Constant, SignatureToken, AbilitySet, StructHandle, TypeSignature, FieldDefinition, StructHandleIndex, StructFieldInformation, StructDefinition
+        ConstantPoolIndex, Constant, SignatureToken, AbilitySet, StructHandle, TypeSignature, FieldDefinition, StructHandleIndex, StructFieldInformation, StructDefinition, Signature
     },
 };
 
@@ -44,6 +44,37 @@ fn make_module(code: Vec<Bytecode>) -> CompiledModule {
 
     module
 }
+
+
+fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> CompiledModule {
+    let code_unit = CodeUnit {
+        code,
+        locals: SignatureIndex(0),
+    };
+
+    let fun_def = FunctionDefinition {
+        code: Some(code_unit.clone()),
+        ..Default::default()
+    };
+
+    let fun_handle = FunctionHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        parameters: SignatureIndex(0),
+        return_: SignatureIndex(0),
+        type_parameters: vec![],
+    };
+
+    let mut module = empty_module();
+    module.function_handles.push(fun_handle);
+    module.function_defs.push(fun_def);
+    module.signatures = vec![
+        Signature(vec![signature]),
+    ];
+
+    module
+}
+
 
 fn add_simple_struct(module: &mut CompiledModule) {
     let struct_def = StructDefinition {
@@ -926,4 +957,41 @@ fn test_pop_no_arg() {
     let module = make_module(code);
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+
+#[test]
+fn test_borrow_loc_ok() {
+    for instr in vec![
+        Bytecode::ImmBorrowLoc(1),
+        Bytecode::MutBorrowLoc(0),
+    ] {
+        let code = vec![instr];
+        let module = make_module_with_local(code, SignatureToken::U64);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_borrow_loc_reference() {
+    for instr in vec![
+        Bytecode::ImmBorrowLoc(1),
+        Bytecode::MutBorrowLoc(0),
+    ] {
+        for reference in vec![
+            SignatureToken::Reference(Box::new(SignatureToken::U64)),
+            SignatureToken::MutableReference(Box::new(SignatureToken::U32)),
+        ] {
+            let code = vec![instr.clone()];
+            let module = make_module_with_local(code, reference.clone());
+            let fun_context = get_fun_context(&module);
+            let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+            assert_eq!(
+                result.unwrap_err().major_status(),
+                StatusCode::BORROWLOC_REFERENCE_ERROR
+            );
+        }
+    }
 }
