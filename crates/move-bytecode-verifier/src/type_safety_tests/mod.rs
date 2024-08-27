@@ -895,3 +895,35 @@ fn test_eq_neq_no_args() {
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
+
+
+#[test]
+fn test_pop_ok() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::Pop];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_pop_no_drop() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::Pack(StructDefinitionIndex(0)), Bytecode::Pop];
+    let mut module = make_module(code);
+    add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::POP_WITHOUT_DROP_ABILITY
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_pop_no_arg() {
+    let code = vec![Bytecode::Pop];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
