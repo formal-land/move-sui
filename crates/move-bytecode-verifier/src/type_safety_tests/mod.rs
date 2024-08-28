@@ -1122,3 +1122,86 @@ fn test_read_ref_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+
+#[test]
+fn test_write_ref_correct_type() {
+    let code = vec![Bytecode::LdU64(42), Bytecode::MutBorrowLoc(0), Bytecode::WriteRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::Pack(StructDefinitionIndex(0)),
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::WriteRef
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
+    add_simple_struct_with_abilities(&mut module, AbilitySet::PRIMITIVES);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+
+}
+
+#[test]
+fn test_write_ref_wrong_type() {
+    let code = vec![Bytecode::LdU64(42), Bytecode::ImmBorrowLoc(0), Bytecode::WriteRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::WRITEREF_NO_MUTABLE_REFERENCE_ERROR
+    );
+}
+
+#[test]
+fn test_write_ref_mismatched_types() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::MutBorrowLoc(0), Bytecode::WriteRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::WRITEREF_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+fn test_write_ref_no_drop() {
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::Pack(StructDefinitionIndex(0)),
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::WriteRef
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
+    add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::WRITEREF_WITHOUT_DROP_ABILITY
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_write_ref_too_few_args() {
+    let code = vec![Bytecode::MutBorrowLoc(0), Bytecode::WriteRef];
+    let module = make_module_with_local(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
+#[should_panic]
+fn test_write_ref_no_args() {
+    let code = vec![Bytecode::WriteRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
