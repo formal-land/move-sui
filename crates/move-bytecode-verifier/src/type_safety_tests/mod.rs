@@ -995,3 +995,36 @@ fn test_borrow_loc_reference() {
         }
     }
 }
+
+
+#[test]
+fn test_copy_loc_ok() {
+    let code = vec![Bytecode::CopyLoc(0)];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_copy_loc_no_copy() {
+    let code = vec![Bytecode::CopyLoc(0)];
+    let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
+    add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::COPYLOC_WITHOUT_COPY_ABILITY
+    );
+}
+
+
+#[test]
+fn test_move_loc_ok() {
+    let code = vec![Bytecode::MoveLoc(0)];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
