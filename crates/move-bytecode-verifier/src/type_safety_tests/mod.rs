@@ -1028,3 +1028,43 @@ fn test_move_loc_ok() {
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     assert!(result.is_ok());
 }
+
+
+#[test]
+fn test_freeze_ref_correct_type() {
+    let code = vec![Bytecode::MutBorrowLoc(0), Bytecode::FreezeRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_freeze_ref_wrong_type() {
+    let code = vec![Bytecode::ImmBorrowLoc(0), Bytecode::FreezeRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::FREEZEREF_TYPE_MISMATCH_ERROR
+    );
+
+    let code = vec![Bytecode::LdTrue, Bytecode::FreezeRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::FREEZEREF_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_freeze_ref_no_arg() {
+    let code = vec![Bytecode::FreezeRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
