@@ -1068,3 +1068,57 @@ fn test_freeze_ref_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+
+#[test]
+fn test_read_ref_correct_type() {
+    for instr in vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::MutBorrowLoc(0),
+    ] {
+        let code = vec![instr, Bytecode::ReadRef];
+        let module = make_module_with_local(code, SignatureToken::U64);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_read_ref_wrong_type() {
+let code = vec![Bytecode::LdU64(42), Bytecode::ReadRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::READREF_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+fn test_read_ref_no_copy() {
+    for instr in vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::MutBorrowLoc(0),
+    ] {
+        let code = vec![instr, Bytecode::ReadRef];
+        let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
+        add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::READREF_WITHOUT_COPY_ABILITY
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_read_ref_no_arg() {
+    let code = vec![Bytecode::ReadRef];
+    let module = make_module_with_local(code, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
