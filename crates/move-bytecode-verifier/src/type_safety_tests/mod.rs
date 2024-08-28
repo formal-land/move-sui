@@ -998,6 +998,37 @@ fn test_borrow_loc_reference() {
 
 
 #[test]
+fn test_st_lock_correct_type() {
+    let code = vec![Bytecode::LdU32(51), Bytecode::StLoc(0)];
+    let module = make_module_with_local(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_st_lock_mismatched_types() {
+    let code = vec![Bytecode::LdU64(51), Bytecode::StLoc(0)];
+    let module = make_module_with_local(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::STLOC_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_st_lock_no_arg() {
+    let code = vec![Bytecode::StLoc(0)];
+    let module = make_module_with_local(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+
+#[test]
 fn test_copy_loc_ok() {
     let code = vec![Bytecode::CopyLoc(0)];
     let module = make_module_with_local(code, SignatureToken::U64);
