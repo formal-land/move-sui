@@ -1,23 +1,23 @@
 use move_binary_format::file_format::{
-    empty_module, Bytecode, CodeUnit, FunctionDefinition, FunctionDefinitionIndex, FunctionHandle, IdentifierIndex, ModuleHandleIndex, SignatureIndex, StructDefinitionIndex
+    empty_module, Bytecode, CodeUnit, FunctionDefinition, FunctionDefinitionIndex, FunctionHandle,
+    IdentifierIndex, ModuleHandleIndex, SignatureIndex, StructDefinitionIndex,
 };
 
-use move_core_types::{
-    u256::U256, vm_status::StatusCode,
-};
+use move_core_types::{u256::U256, vm_status::StatusCode};
 
 use move_binary_format::{
-    CompiledModule,
     file_format::{
-        ConstantPoolIndex, Constant, SignatureToken, AbilitySet, StructHandle, TypeSignature, FieldDefinition, StructHandleIndex, StructFieldInformation, StructDefinition, Signature, FieldHandleIndex, FieldHandle, FunctionHandleIndex
+        AbilitySet, Constant, ConstantPoolIndex, FieldDefinition, FieldHandle, FieldHandleIndex,
+        FunctionHandleIndex, Signature, SignatureToken, StructDefinition, StructFieldInformation,
+        StructHandle, StructHandleIndex, TypeSignature,
     },
+    CompiledModule,
 };
 
-use move_bytecode_verifier_meter::dummy::DummyMeter;
 use crate::absint::FunctionContext;
 use crate::constants;
 use crate::type_safety;
-
+use move_bytecode_verifier_meter::dummy::DummyMeter;
 
 fn make_module(code: Vec<Bytecode>) -> CompiledModule {
     make_module_with_ret(code, SignatureToken::U32)
@@ -45,10 +45,7 @@ fn make_module_with_ret(code: Vec<Bytecode>, return_: SignatureToken) -> Compile
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
-    module.signatures = vec![
-        Signature(vec![]),
-        Signature(vec![return_]),
-    ];
+    module.signatures = vec![Signature(vec![]), Signature(vec![return_])];
 
     module
 }
@@ -75,9 +72,7 @@ fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> Com
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
-    module.signatures = vec![
-        Signature(vec![signature]),
-    ];
+    module.signatures = vec![Signature(vec![signature])];
 
     module
 }
@@ -119,12 +114,10 @@ fn add_native_struct(module: &mut CompiledModule) {
     module.struct_defs.push(struct_def);
     module.struct_handles.push(struct_handle);
 
-    module.field_handles = vec![
-        FieldHandle {
-            owner: StructDefinitionIndex(0),
-            field: 0,
-        },
-    ];
+    module.field_handles = vec![FieldHandle {
+        owner: StructDefinitionIndex(0),
+        field: 0,
+    }];
 }
 
 fn add_simple_struct(module: &mut CompiledModule) {
@@ -148,7 +141,7 @@ fn add_simple_struct(module: &mut CompiledModule) {
         abilities: AbilitySet::EMPTY,
         type_parameters: vec![],
     };
-    
+
     module.struct_defs.push(struct_def);
     module.struct_handles.push(struct_handle);
 
@@ -160,20 +153,17 @@ fn add_simple_struct(module: &mut CompiledModule) {
         FieldHandle {
             owner: StructDefinitionIndex(0),
             field: 1,
-        }
+        },
     ];
 }
-
 
 fn add_simple_struct_with_abilities(module: &mut CompiledModule, abilities: AbilitySet) {
     let struct_def = StructDefinition {
         struct_handle: StructHandleIndex(0),
-        field_information: StructFieldInformation::Declared(vec![
-            FieldDefinition {
-                name: IdentifierIndex(5),
-                signature: TypeSignature(SignatureToken::U32),
-            },
-        ]),
+        field_information: StructFieldInformation::Declared(vec![FieldDefinition {
+            name: IdentifierIndex(5),
+            signature: TypeSignature(SignatureToken::U32),
+        }]),
     };
 
     let struct_handle = StructHandle {
@@ -187,23 +177,18 @@ fn add_simple_struct_with_abilities(module: &mut CompiledModule, abilities: Abil
     module.struct_handles.push(struct_handle);
 }
 
-
 fn get_fun_context(module: &CompiledModule) -> FunctionContext {
     FunctionContext::new(
         &module,
-        FunctionDefinitionIndex(0), 
+        FunctionDefinitionIndex(0),
         module.function_defs[0].code.as_ref().unwrap(),
         &module.function_handles[0],
     )
 }
 
-
 #[test]
 fn test_br_true_false_correct_type() {
-    for instr in vec![
-        Bytecode::BrTrue(0),
-        Bytecode::BrFalse(0),
-    ] {
+    for instr in vec![Bytecode::BrTrue(0), Bytecode::BrFalse(0)] {
         let code = vec![Bytecode::LdTrue, instr];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -214,10 +199,7 @@ fn test_br_true_false_correct_type() {
 
 #[test]
 fn test_br_true_false_wrong_type() {
-    for instr in vec![
-        Bytecode::BrTrue(0),
-        Bytecode::BrFalse(0),
-    ] {
+    for instr in vec![Bytecode::BrTrue(0), Bytecode::BrFalse(0)] {
         let code = vec![Bytecode::LdU32(0), instr];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -232,17 +214,13 @@ fn test_br_true_false_wrong_type() {
 #[test]
 #[should_panic]
 fn test_br_true_false_no_arg() {
-    for instr in vec![
-        Bytecode::BrTrue(0),
-        Bytecode::BrFalse(0),
-    ] {
+    for instr in vec![Bytecode::BrTrue(0), Bytecode::BrFalse(0)] {
         let code = vec![instr];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
-
 
 #[test]
 fn test_abort_correct_type() {
@@ -252,7 +230,6 @@ fn test_abort_correct_type() {
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     assert!(result.is_ok());
 }
-
 
 #[test]
 fn test_abort_wrong_type() {
@@ -274,7 +251,6 @@ fn test_abort_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
-
 
 #[test]
 fn test_cast_correct_type() {
@@ -332,8 +308,6 @@ fn test_cast_no_arg() {
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
-
-
 
 #[test]
 fn test_arithmetic_correct_types() {
@@ -419,7 +393,6 @@ fn test_arithmetic_wrong_type() {
     }
 }
 
-
 #[test]
 #[should_panic]
 fn test_arithmetic_too_few_args() {
@@ -460,13 +433,9 @@ fn test_arithmetic_no_args() {
     }
 }
 
-
 #[test]
 fn test_shl_shr_correct_types() {
-    for instr in vec![
-        Bytecode::Shl,
-        Bytecode::Shr,
-    ] {
+    for instr in vec![Bytecode::Shl, Bytecode::Shr] {
         for push_ty_instr in vec![
             Bytecode::LdU8(42),
             Bytecode::LdU16(257),
@@ -486,10 +455,7 @@ fn test_shl_shr_correct_types() {
 
 #[test]
 fn test_shl_shr_first_operand_wrong_type() {
-    for instr in vec![
-        Bytecode::Shl,
-        Bytecode::Shr,
-    ] {
+    for instr in vec![Bytecode::Shl, Bytecode::Shr] {
         let code = vec![Bytecode::LdTrue, Bytecode::LdU8(2), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -503,10 +469,7 @@ fn test_shl_shr_first_operand_wrong_type() {
 
 #[test]
 fn test_shl_shr_second_operand_wrong_type() {
-    for instr in vec![
-        Bytecode::Shl,
-        Bytecode::Shr,
-    ] {
+    for instr in vec![Bytecode::Shl, Bytecode::Shr] {
         let code = vec![Bytecode::LdU32(42), Bytecode::LdU16(2), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -521,25 +484,18 @@ fn test_shl_shr_second_operand_wrong_type() {
 #[test]
 #[should_panic]
 fn test_shl_shr_too_few_args() {
-    for instr in vec![
-        Bytecode::Shl,
-        Bytecode::Shr,
-    ] {
+    for instr in vec![Bytecode::Shl, Bytecode::Shr] {
         let code = vec![Bytecode::LdU16(42), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-
     }
 }
 
 #[test]
 #[should_panic]
 fn test_shl_shr_no_args() {
-    for instr in vec![
-        Bytecode::Shl,
-        Bytecode::Shr,
-    ] {
+    for instr in vec![Bytecode::Shl, Bytecode::Shr] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -547,13 +503,9 @@ fn test_shl_shr_no_args() {
     }
 }
 
-
 #[test]
 fn test_or_and_correct_types() {
-    for instr in vec![
-        Bytecode::Or,
-        Bytecode::And,
-    ] {
+    for instr in vec![Bytecode::Or, Bytecode::And] {
         let code = vec![Bytecode::LdFalse, Bytecode::LdTrue, instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -564,10 +516,7 @@ fn test_or_and_correct_types() {
 
 #[test]
 fn test_or_and_wrong_types() {
-    for instr in vec![
-        Bytecode::Or,
-        Bytecode::And,
-    ] {
+    for instr in vec![Bytecode::Or, Bytecode::And] {
         let code = vec![Bytecode::LdU32(42), Bytecode::LdTrue, instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -591,10 +540,7 @@ fn test_or_and_wrong_types() {
 #[test]
 #[should_panic]
 fn test_or_and_too_few_args() {
-    for instr in vec![
-        Bytecode::Or,
-        Bytecode::And,
-    ] {
+    for instr in vec![Bytecode::Or, Bytecode::And] {
         let code = vec![Bytecode::LdTrue, instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -605,17 +551,13 @@ fn test_or_and_too_few_args() {
 #[test]
 #[should_panic]
 fn test_or_and_no_args() {
-    for instr in vec![
-        Bytecode::Or,
-        Bytecode::And,
-    ] {
+    for instr in vec![Bytecode::Or, Bytecode::And] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
-
 
 #[test]
 fn test_not_correct_type() {
@@ -647,7 +589,6 @@ fn test_not_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_comparison_correct_types() {
     for instr in vec![
@@ -677,12 +618,7 @@ fn test_comparison_correct_types() {
 
 #[test]
 fn test_comparison_mismatched_types() {
-    for instr in vec![
-        Bytecode::Lt,
-        Bytecode::Gt,
-        Bytecode::Le,
-        Bytecode::Ge,
-    ] {
+    for instr in vec![Bytecode::Lt, Bytecode::Gt, Bytecode::Le, Bytecode::Ge] {
         let code = vec![Bytecode::LdU8(42), Bytecode::LdU64(94), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -696,12 +632,7 @@ fn test_comparison_mismatched_types() {
 
 #[test]
 fn test_comparison_wrong_type() {
-    for instr in vec![
-        Bytecode::Lt,
-        Bytecode::Gt,
-        Bytecode::Le,
-        Bytecode::Ge,
-    ] {
+    for instr in vec![Bytecode::Lt, Bytecode::Gt, Bytecode::Le, Bytecode::Ge] {
         let code = vec![Bytecode::LdTrue, Bytecode::LdU64(94), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -725,12 +656,7 @@ fn test_comparison_wrong_type() {
 #[test]
 #[should_panic]
 fn test_comparison_too_few_args() {
-    for instr in vec![
-        Bytecode::Lt,
-        Bytecode::Gt,
-        Bytecode::Le,
-        Bytecode::Ge,
-    ] {
+    for instr in vec![Bytecode::Lt, Bytecode::Gt, Bytecode::Le, Bytecode::Ge] {
         let code = vec![Bytecode::LdU16(42), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -741,12 +667,7 @@ fn test_comparison_too_few_args() {
 #[test]
 #[should_panic]
 fn test_comparison_no_args() {
-    for instr in vec![
-        Bytecode::Lt,
-        Bytecode::Gt,
-        Bytecode::Le,
-        Bytecode::Ge,
-    ] {
+    for instr in vec![Bytecode::Lt, Bytecode::Gt, Bytecode::Le, Bytecode::Ge] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -754,14 +675,10 @@ fn test_comparison_no_args() {
     }
 }
 
-
 // these operation does not produce errors in verify_instr()
 #[test]
 fn test_branch_nop_ok() {
-    for instr in vec![
-        Bytecode::Branch(0),
-        Bytecode::Nop,
-    ] {
+    for instr in vec![Bytecode::Branch(0), Bytecode::Nop] {
         let code = vec![instr];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -769,7 +686,6 @@ fn test_branch_nop_ok() {
         assert!(result.is_ok());
     }
 }
-
 
 #[test]
 fn test_ld_integers_ok() {
@@ -789,13 +705,9 @@ fn test_ld_integers_ok() {
     }
 }
 
-
 #[test]
 fn test_ld_true_false_ok() {
-    for instr in vec![
-        Bytecode::LdTrue,
-        Bytecode::LdFalse,
-    ] {
+    for instr in vec![Bytecode::LdTrue, Bytecode::LdFalse] {
         let code = vec![instr];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -803,7 +715,6 @@ fn test_ld_true_false_ok() {
         assert!(result.is_ok());
     }
 }
-
 
 #[test]
 fn test_ld_const_ok() {
@@ -820,10 +731,13 @@ fn test_ld_const_ok() {
     assert!(result.is_ok());
 }
 
-
 #[test]
 fn test_pack_correct_types() {
-    let code = vec![Bytecode::LdU32(42), Bytecode::LdTrue, Bytecode::Pack(StructDefinitionIndex(0))];
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::LdTrue,
+        Bytecode::Pack(StructDefinitionIndex(0)),
+    ];
     let mut module: CompiledModule = make_module(code);
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -833,7 +747,11 @@ fn test_pack_correct_types() {
 
 #[test]
 fn test_pack_mismatched_types() {
-    let code = vec![Bytecode::LdTrue, Bytecode::LdU32(42), Bytecode::Pack(StructDefinitionIndex(0))];
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::LdU32(42),
+        Bytecode::Pack(StructDefinitionIndex(0)),
+    ];
     let mut module: CompiledModule = make_module(code);
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -854,11 +772,11 @@ fn test_pack_too_few_args() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_unpack_correct_types() {
     let code = vec![
-        Bytecode::LdU32(42), Bytecode::LdTrue,
+        Bytecode::LdU32(42),
+        Bytecode::LdTrue,
         Bytecode::Pack(StructDefinitionIndex(0)),
         Bytecode::Unpack(StructDefinitionIndex(0)),
     ];
@@ -871,7 +789,10 @@ fn test_unpack_correct_types() {
 
 #[test]
 fn test_unpack_wrong_type() {
-    let code = vec![Bytecode::LdU32(42), Bytecode::Unpack(StructDefinitionIndex(0))];
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::Unpack(StructDefinitionIndex(0)),
+    ];
     let mut module: CompiledModule = make_module(code);
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -892,13 +813,9 @@ fn test_unpack_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_eq_neq_correct_types() {
-    for instr in vec![
-        Bytecode::Eq,
-        Bytecode::Neq,
-    ] {
+    for instr in vec![Bytecode::Eq, Bytecode::Neq] {
         let code = vec![Bytecode::LdU32(42), Bytecode::LdU32(42), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -910,7 +827,7 @@ fn test_eq_neq_correct_types() {
             Bytecode::Pack(StructDefinitionIndex(0)),
             Bytecode::LdU32(51),
             Bytecode::Pack(StructDefinitionIndex(0)),
-            instr.clone()
+            instr.clone(),
         ];
         let mut module = make_module(code);
         add_simple_struct_with_abilities(&mut module, AbilitySet::PRIMITIVES);
@@ -922,10 +839,7 @@ fn test_eq_neq_correct_types() {
 
 #[test]
 fn test_eq_neq_mismatched_types() {
-    for instr in vec![
-        Bytecode::Eq,
-        Bytecode::Neq,
-    ] {
+    for instr in vec![Bytecode::Eq, Bytecode::Neq] {
         let code = vec![Bytecode::LdU32(42), Bytecode::LdU64(42), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -937,18 +851,15 @@ fn test_eq_neq_mismatched_types() {
     }
 }
 
-#[test] 
+#[test]
 fn test_eq_neq_no_drop() {
-    for instr in vec![
-        Bytecode::Eq,
-        Bytecode::Neq,
-    ] {
+    for instr in vec![Bytecode::Eq, Bytecode::Neq] {
         let code = vec![
             Bytecode::LdU32(42),
             Bytecode::Pack(StructDefinitionIndex(0)),
             Bytecode::LdU32(51),
             Bytecode::Pack(StructDefinitionIndex(0)),
-            instr.clone()
+            instr.clone(),
         ];
 
         let mut module = make_module(code);
@@ -965,10 +876,7 @@ fn test_eq_neq_no_drop() {
 #[test]
 #[should_panic]
 fn test_eq_neq_too_few_args() {
-    for instr in vec![
-        Bytecode::Eq,
-        Bytecode::Neq,
-    ] {
+    for instr in vec![Bytecode::Eq, Bytecode::Neq] {
         let code = vec![Bytecode::LdU32(42), instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
@@ -979,17 +887,13 @@ fn test_eq_neq_too_few_args() {
 #[test]
 #[should_panic]
 fn test_eq_neq_no_args() {
-    for instr in vec![
-        Bytecode::Eq,
-        Bytecode::Neq,
-    ] {
+    for instr in vec![Bytecode::Eq, Bytecode::Neq] {
         let code = vec![instr.clone()];
         let module = make_module(code);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
 }
-
 
 #[test]
 fn test_pop_ok() {
@@ -1002,7 +906,11 @@ fn test_pop_ok() {
 
 #[test]
 fn test_pop_no_drop() {
-    let code = vec![Bytecode::LdU32(42), Bytecode::Pack(StructDefinitionIndex(0)), Bytecode::Pop];
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::Pack(StructDefinitionIndex(0)),
+        Bytecode::Pop,
+    ];
     let mut module = make_module(code);
     add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
     let fun_context = get_fun_context(&module);
@@ -1022,13 +930,9 @@ fn test_pop_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_borrow_loc_ok() {
-    for instr in vec![
-        Bytecode::ImmBorrowLoc(1),
-        Bytecode::MutBorrowLoc(0),
-    ] {
+    for instr in vec![Bytecode::ImmBorrowLoc(1), Bytecode::MutBorrowLoc(0)] {
         let code = vec![instr];
         let module = make_module_with_local(code, SignatureToken::U64);
         let fun_context = get_fun_context(&module);
@@ -1039,10 +943,7 @@ fn test_borrow_loc_ok() {
 
 #[test]
 fn test_borrow_loc_reference() {
-    for instr in vec![
-        Bytecode::ImmBorrowLoc(1),
-        Bytecode::MutBorrowLoc(0),
-    ] {
+    for instr in vec![Bytecode::ImmBorrowLoc(1), Bytecode::MutBorrowLoc(0)] {
         for reference in vec![
             SignatureToken::Reference(Box::new(SignatureToken::U64)),
             SignatureToken::MutableReference(Box::new(SignatureToken::U32)),
@@ -1058,7 +959,6 @@ fn test_borrow_loc_reference() {
         }
     }
 }
-
 
 #[test]
 fn test_st_lock_correct_type() {
@@ -1090,7 +990,6 @@ fn test_st_lock_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_copy_loc_ok() {
     let code = vec![Bytecode::CopyLoc(0)];
@@ -1113,7 +1012,6 @@ fn test_copy_loc_no_copy() {
     );
 }
 
-
 #[test]
 fn test_move_loc_ok() {
     let code = vec![Bytecode::MoveLoc(0)];
@@ -1122,7 +1020,6 @@ fn test_move_loc_ok() {
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     assert!(result.is_ok());
 }
-
 
 #[test]
 fn test_freeze_ref_correct_type() {
@@ -1163,13 +1060,9 @@ fn test_freeze_ref_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_read_ref_correct_type() {
-    for instr in vec![
-        Bytecode::ImmBorrowLoc(0),
-        Bytecode::MutBorrowLoc(0),
-    ] {
+    for instr in vec![Bytecode::ImmBorrowLoc(0), Bytecode::MutBorrowLoc(0)] {
         let code = vec![instr, Bytecode::ReadRef];
         let module = make_module_with_local(code, SignatureToken::U64);
         let fun_context = get_fun_context(&module);
@@ -1180,7 +1073,7 @@ fn test_read_ref_correct_type() {
 
 #[test]
 fn test_read_ref_wrong_type() {
-let code = vec![Bytecode::LdU64(42), Bytecode::ReadRef];
+    let code = vec![Bytecode::LdU64(42), Bytecode::ReadRef];
     let module = make_module_with_local(code, SignatureToken::U64);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1192,10 +1085,7 @@ let code = vec![Bytecode::LdU64(42), Bytecode::ReadRef];
 
 #[test]
 fn test_read_ref_no_copy() {
-    for instr in vec![
-        Bytecode::ImmBorrowLoc(0),
-        Bytecode::MutBorrowLoc(0),
-    ] {
+    for instr in vec![Bytecode::ImmBorrowLoc(0), Bytecode::MutBorrowLoc(0)] {
         let code = vec![instr, Bytecode::ReadRef];
         let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
         add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
@@ -1217,10 +1107,13 @@ fn test_read_ref_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_write_ref_correct_type() {
-    let code = vec![Bytecode::LdU64(42), Bytecode::MutBorrowLoc(0), Bytecode::WriteRef];
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::WriteRef,
+    ];
     let module = make_module_with_local(code, SignatureToken::U64);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1230,19 +1123,22 @@ fn test_write_ref_correct_type() {
         Bytecode::LdU32(42),
         Bytecode::Pack(StructDefinitionIndex(0)),
         Bytecode::MutBorrowLoc(0),
-        Bytecode::WriteRef
+        Bytecode::WriteRef,
     ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct_with_abilities(&mut module, AbilitySet::PRIMITIVES);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     assert!(result.is_ok());
-
 }
 
 #[test]
 fn test_write_ref_wrong_type() {
-    let code = vec![Bytecode::LdU64(42), Bytecode::ImmBorrowLoc(0), Bytecode::WriteRef];
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::WriteRef,
+    ];
     let module = make_module_with_local(code, SignatureToken::U64);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1254,7 +1150,11 @@ fn test_write_ref_wrong_type() {
 
 #[test]
 fn test_write_ref_mismatched_types() {
-    let code = vec![Bytecode::LdU32(42), Bytecode::MutBorrowLoc(0), Bytecode::WriteRef];
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::WriteRef,
+    ];
     let module = make_module_with_local(code, SignatureToken::U64);
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1270,7 +1170,7 @@ fn test_write_ref_no_drop() {
         Bytecode::LdU32(42),
         Bytecode::Pack(StructDefinitionIndex(0)),
         Bytecode::MutBorrowLoc(0),
-        Bytecode::WriteRef
+        Bytecode::WriteRef,
     ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct_with_abilities(&mut module, AbilitySet::EMPTY);
@@ -1300,10 +1200,12 @@ fn test_write_ref_no_args() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_imm_borrow_field_correct_type() {
-    let code = vec![Bytecode::ImmBorrowLoc(0), Bytecode::ImmBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::ImmBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1313,7 +1215,10 @@ fn test_imm_borrow_field_correct_type() {
 
 #[test]
 fn test_imm_borrow_field_wrong_type() {
-    let code = vec![Bytecode::LdTrue, Bytecode::ImmBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::ImmBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1326,7 +1231,10 @@ fn test_imm_borrow_field_wrong_type() {
 
 #[test]
 fn test_imm_borrow_field_mismatched_types() {
-    let code = vec![Bytecode::ImmBorrowLoc(0), Bytecode::ImmBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::ImmBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::U64);
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1339,7 +1247,10 @@ fn test_imm_borrow_field_mismatched_types() {
 
 #[test]
 fn test_imm_borrow_field_bad_field() {
-    let code = vec![Bytecode::ImmBorrowLoc(0), Bytecode::ImmBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::ImmBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_native_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1360,10 +1271,12 @@ fn test_imm_borrow_field_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_mut_borrow_field_correct_type() {
-    let code = vec![Bytecode::MutBorrowLoc(0), Bytecode::MutBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::MutBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1373,7 +1286,10 @@ fn test_mut_borrow_field_correct_type() {
 
 #[test]
 fn test_mut_borrow_field_wrong_type() {
-    let code = vec![Bytecode::LdTrue, Bytecode::MutBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::MutBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1383,7 +1299,10 @@ fn test_mut_borrow_field_wrong_type() {
         StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
     );
 
-    let code = vec![Bytecode::ImmBorrowLoc(0), Bytecode::MutBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::MutBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1392,12 +1311,14 @@ fn test_mut_borrow_field_wrong_type() {
         result.unwrap_err().major_status(),
         StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
     );
-
 }
 
 #[test]
 fn test_mut_borrow_field_mismatched_types() {
-    let code = vec![Bytecode::MutBorrowLoc(0), Bytecode::MutBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::MutBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::U64);
     add_simple_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1410,7 +1331,10 @@ fn test_mut_borrow_field_mismatched_types() {
 
 #[test]
 fn test_mut_borrow_field_bad_field() {
-    let code = vec![Bytecode::MutBorrowLoc(0), Bytecode::MutBorrowField(FieldHandleIndex(0))];
+    let code = vec![
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::MutBorrowField(FieldHandleIndex(0)),
+    ];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_native_struct(&mut module);
     let fun_context = get_fun_context(&module);
@@ -1430,7 +1354,6 @@ fn test_mut_borrow_field_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
-
 
 #[test]
 fn test_ret_correct_type() {
@@ -1462,10 +1385,13 @@ fn test_ret_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
-
 #[test]
 fn test_call_correct_types() {
-    let code = vec![Bytecode::LdU64(42), Bytecode::LdTrue, Bytecode::Call(FunctionHandleIndex(1))];
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::LdTrue,
+        Bytecode::Call(FunctionHandleIndex(1)),
+    ];
     let parameters = Signature(vec![SignatureToken::U64, SignatureToken::Bool]);
     let mut module = make_module(code);
     add_function_with_parameters(&mut module, parameters);
@@ -1476,7 +1402,11 @@ fn test_call_correct_types() {
 
 #[test]
 fn test_call_wrong_types() {
-    let code = vec![Bytecode::LdTrue, Bytecode::LdU64(42), Bytecode::Call(FunctionHandleIndex(1))];
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::LdU64(42),
+        Bytecode::Call(FunctionHandleIndex(1)),
+    ];
     let parameters = Signature(vec![SignatureToken::U64, SignatureToken::Bool]);
     let mut module = make_module(code);
     add_function_with_parameters(&mut module, parameters);
