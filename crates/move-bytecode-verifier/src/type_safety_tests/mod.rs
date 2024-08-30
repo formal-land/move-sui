@@ -20,6 +20,10 @@ use crate::type_safety;
 
 
 fn make_module(code: Vec<Bytecode>) -> CompiledModule {
+    make_module_with_ret(code, SignatureToken::U32)
+}
+
+fn make_module_with_ret(code: Vec<Bytecode>, return_: SignatureToken) -> CompiledModule {
     let code_unit = CodeUnit {
         code,
         ..Default::default()
@@ -34,17 +38,20 @@ fn make_module(code: Vec<Bytecode>) -> CompiledModule {
         module: ModuleHandleIndex(0),
         name: IdentifierIndex(0),
         parameters: SignatureIndex(0),
-        return_: SignatureIndex(0),
+        return_: SignatureIndex(1),
         type_parameters: vec![],
     };
 
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
+    module.signatures = vec![
+        Signature(vec![]),
+        Signature(vec![return_]),
+    ];
 
     module
 }
-
 
 fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> CompiledModule {
     let code_unit = CodeUnit {
@@ -1403,3 +1410,35 @@ fn test_mut_borrow_field_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+
+#[test]
+fn test_ret_correct_type() {
+    let code = vec![Bytecode::LdU32(42), Bytecode::Ret];
+    let module = make_module_with_ret(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_ret_wrong_type() {
+    let code = vec![Bytecode::LdU64(42), Bytecode::Ret];
+    let module = make_module_with_ret(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::RET_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_ret_no_arg() {
+    let code = vec![Bytecode::Ret];
+    let module = make_module_with_ret(code, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
