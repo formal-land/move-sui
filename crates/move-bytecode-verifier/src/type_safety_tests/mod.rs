@@ -9,7 +9,7 @@ use move_core_types::{
 use move_binary_format::{
     CompiledModule,
     file_format::{
-        ConstantPoolIndex, Constant, SignatureToken, AbilitySet, StructHandle, TypeSignature, FieldDefinition, StructHandleIndex, StructFieldInformation, StructDefinition, Signature, FieldHandleIndex, FieldHandle
+        ConstantPoolIndex, Constant, SignatureToken, AbilitySet, StructHandle, TypeSignature, FieldDefinition, StructHandleIndex, StructFieldInformation, StructDefinition, Signature, FieldHandleIndex, FieldHandle, FunctionHandleIndex
     },
 };
 
@@ -82,6 +82,26 @@ fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> Com
     module
 }
 
+fn add_function_with_parameters(module: &mut CompiledModule, parameters: Signature) {
+    let fun_def = FunctionDefinition {
+        code: None,
+        ..Default::default()
+    };
+
+    let fun_handle = FunctionHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        parameters: SignatureIndex(2),
+        return_: SignatureIndex(3),
+        type_parameters: vec![],
+    };
+
+    module.signatures.push(parameters);
+    module.signatures.push(Signature(vec![]));
+
+    module.function_handles.push(fun_handle);
+    module.function_defs.push(fun_def);
+}
 
 fn add_native_struct(module: &mut CompiledModule) {
     let struct_def = StructDefinition {
@@ -1442,3 +1462,39 @@ fn test_ret_no_arg() {
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
 
+
+#[test]
+fn test_call_correct_types() {
+    let code = vec![Bytecode::LdU64(42), Bytecode::LdTrue, Bytecode::Call(FunctionHandleIndex(1))];
+    let parameters = Signature(vec![SignatureToken::U64, SignatureToken::Bool]);
+    let mut module = make_module(code);
+    add_function_with_parameters(&mut module, parameters);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_call_wrong_types() {
+    let code = vec![Bytecode::LdTrue, Bytecode::LdU64(42), Bytecode::Call(FunctionHandleIndex(1))];
+    let parameters = Signature(vec![SignatureToken::U64, SignatureToken::Bool]);
+    let mut module = make_module(code);
+    add_function_with_parameters(&mut module, parameters);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::CALL_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_call_too_few_args() {
+    let code = vec![Bytecode::LdTrue, Bytecode::Call(FunctionHandleIndex(1))];
+    let parameters = Signature(vec![SignatureToken::U64, SignatureToken::Bool]);
+    let mut module = make_module(code);
+    add_function_with_parameters(&mut module, parameters);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
