@@ -1428,3 +1428,50 @@ fn test_call_too_few_args() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+#[test]
+fn test_vec_pack_correct_type() {
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::LdU32(42),
+        Bytecode::LdU32(51),
+        Bytecode::VecPack(SignatureIndex(1), 3),
+    ];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_vec_pack_wrong_type() {
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::LdU64(42),
+        Bytecode::LdU32(51),
+        Bytecode::VecPack(SignatureIndex(1), 3),
+    ];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
+}
+
+#[test]
+fn test_vec_pack_too_few_args() {
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::LdU32(51),
+        Bytecode::VecPack(SignatureIndex(1), 3),
+    ];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
+}
