@@ -1475,3 +1475,73 @@ fn test_vec_pack_too_few_args() {
         StatusCode::TYPE_MISMATCH
     );
 }
+
+#[test]
+fn test_vec_unpack_correct_type() {
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::LdU32(42),
+        Bytecode::LdU32(51),
+        Bytecode::VecPack(SignatureIndex(1), 3),
+        Bytecode::VecUnpack(SignatureIndex(1), 3),
+    ];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_vec_unpack_wrong_type() {
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::VecUnpack(SignatureIndex(1), 3),
+    ];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
+
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::LdU32(42),
+        Bytecode::LdU64(51),
+        Bytecode::VecPack(SignatureIndex(1), 3),
+        Bytecode::VecUnpack(SignatureIndex(2), 3),
+    ];
+    let mut module = make_module(code);
+    module.signatures.push(Signature(vec![SignatureToken::U64]));
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
+}
+
+#[test]
+fn test_vec_unpack_too_few_elements() {
+    let code = vec![
+        Bytecode::LdU32(33),
+        Bytecode::LdU32(42),
+        Bytecode::LdU32(51),
+        Bytecode::VecPack(SignatureIndex(1), 3),
+        Bytecode::VecUnpack(SignatureIndex(1), 100500),
+    ];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+#[should_panic]
+fn test_vec_unpack_no_arg() {
+    let code = vec![Bytecode::VecUnpack(SignatureIndex(1), 3)];
+    let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
