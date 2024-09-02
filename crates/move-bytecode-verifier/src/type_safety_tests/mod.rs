@@ -53,7 +53,8 @@ fn make_module_with_ret(code: Vec<Bytecode>, return_: SignatureToken) -> Compile
 fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> CompiledModule {
     let code_unit = CodeUnit {
         code,
-        locals: SignatureIndex(0),
+        locals: SignatureIndex(2),
+        ..Default::default()
     };
 
     let fun_def = FunctionDefinition {
@@ -64,15 +65,15 @@ fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> Com
     let fun_handle = FunctionHandle {
         module: ModuleHandleIndex(0),
         name: IdentifierIndex(0),
-        parameters: SignatureIndex(0),
-        return_: SignatureIndex(0),
+        parameters: SignatureIndex(2),
+        return_: SignatureIndex(1),
         type_parameters: vec![],
     };
 
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
-    module.signatures = vec![Signature(vec![signature])];
+    module.signatures = vec![Signature(vec![]), Signature(vec![SignatureToken::U32]), Signature(vec![signature])];
 
     module
 }
@@ -1542,6 +1543,61 @@ fn test_vec_unpack_too_few_elements() {
 fn test_vec_unpack_no_arg() {
     let code = vec![Bytecode::VecUnpack(SignatureIndex(1), 3)];
     let module = make_module(code);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
+fn test_vec_len_correct_type() {
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::VecLen(SignatureIndex(3)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    module.signatures.push(Signature(vec![SignatureToken::U32]));
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_vec_len_type_mismatch() {
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::VecLen(SignatureIndex(3)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    module.signatures.push(Signature(vec![SignatureToken::U64]));
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
+}
+
+#[test]
+fn test_vec_len_wrong_type() {
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::VecLen(SignatureIndex(3)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    module.signatures.push(Signature(vec![SignatureToken::U32]));
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_vec_len_no_arg() {
+    let code = vec![Bytecode::VecLen(SignatureIndex(3))];
+    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
