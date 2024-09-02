@@ -73,7 +73,11 @@ fn make_module_with_local(code: Vec<Bytecode>, signature: SignatureToken) -> Com
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
-    module.signatures = vec![Signature(vec![]), Signature(vec![SignatureToken::U32]), Signature(vec![signature])];
+    module.signatures = vec![
+        Signature(vec![]),
+        Signature(vec![SignatureToken::U32]),
+        Signature(vec![signature]),
+    ];
 
     module
 }
@@ -1553,7 +1557,8 @@ fn test_vec_len_correct_type() {
         Bytecode::ImmBorrowLoc(0),
         Bytecode::VecLen(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1566,7 +1571,8 @@ fn test_vec_len_type_mismatch() {
         Bytecode::ImmBorrowLoc(0),
         Bytecode::VecLen(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U64]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1578,11 +1584,9 @@ fn test_vec_len_type_mismatch() {
 
 #[test]
 fn test_vec_len_wrong_type() {
-    let code = vec![
-        Bytecode::LdU32(42),
-        Bytecode::VecLen(SignatureIndex(3)),
-    ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let code = vec![Bytecode::LdU32(42), Bytecode::VecLen(SignatureIndex(3))];
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1596,7 +1600,8 @@ fn test_vec_len_wrong_type() {
 #[should_panic]
 fn test_vec_len_no_arg() {
     let code = vec![Bytecode::VecLen(SignatureIndex(3))];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1609,7 +1614,8 @@ fn test_vec_imm_borrow_correct_type() {
         Bytecode::LdU64(2),
         Bytecode::VecImmBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1620,7 +1626,8 @@ fn test_vec_imm_borrow_correct_type() {
         Bytecode::LdU64(2),
         Bytecode::VecImmBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1634,7 +1641,8 @@ fn test_vec_imm_borrow_type_mismatch() {
         Bytecode::LdU64(2),
         Bytecode::VecImmBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U64]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1651,7 +1659,8 @@ fn test_vec_imm_borrow_wrong_type() {
         Bytecode::LdU64(2),
         Bytecode::VecImmBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1665,7 +1674,8 @@ fn test_vec_imm_borrow_wrong_type() {
         Bytecode::LdU32(2),
         Bytecode::VecImmBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1682,7 +1692,8 @@ fn test_vec_imm_borrow_too_few_args() {
         Bytecode::ImmBorrowLoc(0),
         Bytecode::VecImmBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1692,7 +1703,8 @@ fn test_vec_imm_borrow_too_few_args() {
 #[should_panic]
 fn test_vec_imm_borrow_no_arg() {
     let code = vec![Bytecode::VecImmBorrow(SignatureIndex(3))];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1705,7 +1717,8 @@ fn test_vec_mut_borrow_correct_type() {
         Bytecode::LdU64(2),
         Bytecode::VecMutBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1719,7 +1732,8 @@ fn test_vec_mut_borrow_type_mismatch() {
         Bytecode::LdU64(2),
         Bytecode::VecMutBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U64]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1736,7 +1750,8 @@ fn test_vec_mut_borrow_wrong_type() {
         Bytecode::LdU64(2),
         Bytecode::VecMutBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1750,7 +1765,8 @@ fn test_vec_mut_borrow_wrong_type() {
         Bytecode::LdU64(2),
         Bytecode::VecMutBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1764,7 +1780,8 @@ fn test_vec_mut_borrow_wrong_type() {
         Bytecode::LdU32(2),
         Bytecode::VecMutBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1781,7 +1798,8 @@ fn test_vec_mut_borrow_too_few_args() {
         Bytecode::MutBorrowLoc(0),
         Bytecode::VecMutBorrow(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1791,7 +1809,8 @@ fn test_vec_mut_borrow_too_few_args() {
 #[should_panic]
 fn test_vec_mut_borrow_no_arg() {
     let code = vec![Bytecode::VecMutBorrow(SignatureIndex(3))];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1804,7 +1823,8 @@ fn test_vec_push_back_correct_type() {
         Bytecode::LdU32(42),
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1818,7 +1838,8 @@ fn test_vec_push_back_type_mismatch() {
         Bytecode::LdFalse,
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1832,7 +1853,8 @@ fn test_vec_push_back_type_mismatch() {
         Bytecode::LdU32(51),
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U64)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U64)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1846,7 +1868,8 @@ fn test_vec_push_back_type_mismatch() {
         Bytecode::LdU32(51),
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U64]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1863,7 +1886,8 @@ fn test_vec_push_back_wrong_type() {
         Bytecode::LdU32(42),
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1877,7 +1901,8 @@ fn test_vec_push_back_wrong_type() {
         Bytecode::LdU32(42),
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1894,7 +1919,8 @@ fn test_vec_push_back_too_few_args() {
         Bytecode::MutBorrowLoc(0),
         Bytecode::VecPushBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1904,7 +1930,8 @@ fn test_vec_push_back_too_few_args() {
 #[should_panic]
 fn test_vec_push_back_no_arg() {
     let code = vec![Bytecode::VecPushBack(SignatureIndex(3))];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1916,7 +1943,8 @@ fn test_vec_pop_back_correct_type() {
         Bytecode::MutBorrowLoc(0),
         Bytecode::VecPopBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1929,7 +1957,8 @@ fn test_vec_pop_back_type_mismatch() {
         Bytecode::MutBorrowLoc(0),
         Bytecode::VecPopBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U64]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1941,11 +1970,9 @@ fn test_vec_pop_back_type_mismatch() {
 
 #[test]
 fn test_vec_pop_back_wrong_type() {
-    let code = vec![
-        Bytecode::LdTrue,
-        Bytecode::VecPopBack(SignatureIndex(3)),
-    ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let code = vec![Bytecode::LdTrue, Bytecode::VecPopBack(SignatureIndex(3))];
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1958,7 +1985,8 @@ fn test_vec_pop_back_wrong_type() {
         Bytecode::ImmBorrowLoc(0),
         Bytecode::VecPopBack(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1972,7 +2000,8 @@ fn test_vec_pop_back_wrong_type() {
 #[should_panic]
 fn test_vec_pop_back_no_arg() {
     let code = vec![Bytecode::VecPopBack(SignatureIndex(3))];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -1986,7 +2015,8 @@ fn test_vec_swap_correct_type() {
         Bytecode::LdU64(3),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -2001,11 +2031,15 @@ fn test_vec_swap_type_mismatch() {
         Bytecode::LdU64(3),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U64]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(result.unwrap_err().major_status(), StatusCode::TYPE_MISMATCH);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
 }
 
 #[test]
@@ -2016,11 +2050,15 @@ fn test_vec_swap_wrong_type() {
         Bytecode::LdU64(3),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(result.unwrap_err().major_status(), StatusCode::TYPE_MISMATCH);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
 
     let code = vec![
         Bytecode::ImmBorrowLoc(0),
@@ -2028,11 +2066,15 @@ fn test_vec_swap_wrong_type() {
         Bytecode::LdU64(3),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(result.unwrap_err().major_status(), StatusCode::TYPE_MISMATCH);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
 
     let code = vec![
         Bytecode::MutBorrowLoc(0),
@@ -2040,11 +2082,15 @@ fn test_vec_swap_wrong_type() {
         Bytecode::LdU64(3),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(result.unwrap_err().major_status(), StatusCode::TYPE_MISMATCH);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
 
     let code = vec![
         Bytecode::MutBorrowLoc(0),
@@ -2052,11 +2098,15 @@ fn test_vec_swap_wrong_type() {
         Bytecode::LdU32(3),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
-    assert_eq!(result.unwrap_err().major_status(), StatusCode::TYPE_MISMATCH);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::TYPE_MISMATCH
+    );
 }
 
 #[test]
@@ -2067,7 +2117,8 @@ fn test_vec_swap_too_few_args() {
         Bytecode::LdU64(2),
         Bytecode::VecSwap(SignatureIndex(3)),
     ];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
@@ -2077,7 +2128,8 @@ fn test_vec_swap_too_few_args() {
 #[should_panic]
 fn test_vec_swap_no_arg() {
     let code = vec![Bytecode::VecSwap(SignatureIndex(3))];
-    let mut module = make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
+    let mut module =
+        make_module_with_local(code, SignatureToken::Vector(Box::new(SignatureToken::U32)));
     module.signatures.push(Signature(vec![SignatureToken::U32]));
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
