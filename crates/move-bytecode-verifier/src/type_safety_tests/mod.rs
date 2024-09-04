@@ -2134,3 +2134,58 @@ fn test_vec_swap_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+#[test]
+fn test_exists_deprecated_correct_type() {
+    let code = vec![
+        Bytecode::CopyLoc(0),
+        Bytecode::ExistsDeprecated(StructDefinitionIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_exists_deprecated_wrong_type() {
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::ExistsDeprecated(StructDefinitionIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::EXISTS_WITHOUT_KEY_ABILITY_OR_BAD_ARGUMENT
+    );
+}
+
+#[test]
+fn test_exists_deprecated_no_key() {
+    let code = vec![
+        Bytecode::CopyLoc(0),
+        Bytecode::ExistsDeprecated(StructDefinitionIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_with_abilities(&mut module, AbilitySet::PRIMITIVES);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::EXISTS_WITHOUT_KEY_ABILITY_OR_BAD_ARGUMENT
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_exists_deprecated_no_arg() {
+    let code = vec![Bytecode::ExistsDeprecated(StructDefinitionIndex(0))];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
