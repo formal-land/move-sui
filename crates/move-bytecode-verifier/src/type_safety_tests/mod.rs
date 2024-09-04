@@ -2244,3 +2244,69 @@ fn test_move_from_deprecated_no_arg() {
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
+
+#[test]
+fn test_borrow_global_deprecated_correct_type() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+        Bytecode::MutBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+    ] {
+        let code = vec![Bytecode::CopyLoc(0), instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_borrow_global_deprecated_wrong_type() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+        Bytecode::MutBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+    ] {
+        let code = vec![Bytecode::LdU64(42), instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BORROWGLOBAL_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+fn test_borrow_global_deprecated_no_key() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+        Bytecode::MutBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+    ] {
+        let code = vec![Bytecode::CopyLoc(0), instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_with_abilities(&mut module, AbilitySet::PRIMITIVES);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BORROWGLOBAL_WITHOUT_KEY_ABILITY
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_borrow_global_deprecated_no_arg() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+        Bytecode::MutBorrowGlobalDeprecated(StructDefinitionIndex(0)),
+    ] {
+        let code = vec![instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
