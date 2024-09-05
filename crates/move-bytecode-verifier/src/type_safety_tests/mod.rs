@@ -8,8 +8,9 @@ use move_core_types::{u256::U256, vm_status::StatusCode};
 use move_binary_format::{
     file_format::{
         AbilitySet, Constant, ConstantPoolIndex, FieldDefinition, FieldHandle, FieldHandleIndex,
-        FunctionHandleIndex, Signature, SignatureToken, StructDefinition, StructFieldInformation,
-        StructHandle, StructHandleIndex, TypeSignature,
+        FunctionHandleIndex, FunctionInstantiation, FunctionInstantiationIndex, Signature,
+        SignatureToken, StructDefinition, StructFieldInformation, StructHandle, StructHandleIndex,
+        TypeSignature,
     },
     CompiledModule,
 };
@@ -101,6 +102,39 @@ fn add_function_with_parameters(module: &mut CompiledModule, parameters: Signatu
 
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
+}
+
+fn add_generic_function_with_parameters(
+    module: &mut CompiledModule,
+    type_parameter: SignatureToken,
+) {
+    let fun_def = FunctionDefinition {
+        code: None,
+        ..Default::default()
+    };
+
+    let fun_handle = FunctionHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        parameters: SignatureIndex(3),
+        return_: SignatureIndex(4),
+        type_parameters: vec![AbilitySet::PRIMITIVES],
+    };
+
+    let fun_inst = FunctionInstantiation {
+        handle: FunctionHandleIndex(1),
+        type_parameters: SignatureIndex(2),
+    };
+
+    module.signatures.push(Signature(vec![type_parameter]));
+    module
+        .signatures
+        .push(Signature(vec![SignatureToken::TypeParameter(0)]));
+    module.signatures.push(Signature(vec![]));
+
+    module.function_handles.push(fun_handle);
+    module.function_defs.push(fun_def);
+    module.function_instantiations.push(fun_inst);
 }
 
 fn add_native_struct(module: &mut CompiledModule) {
@@ -1430,6 +1464,55 @@ fn test_call_too_few_args() {
     let parameters = Signature(vec![SignatureToken::U64, SignatureToken::Bool]);
     let mut module = make_module(code);
     add_function_with_parameters(&mut module, parameters);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
+fn test_call_generic_correct_types() {
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::CallGeneric(FunctionInstantiationIndex(0)),
+    ];
+    let mut module = make_module(code);
+    add_generic_function_with_parameters(&mut module, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+
+    let code = vec![
+        Bytecode::LdU64(51),
+        Bytecode::CallGeneric(FunctionInstantiationIndex(0)),
+    ];
+    let mut module = make_module(code);
+    add_generic_function_with_parameters(&mut module, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_call_generic_wrong_types() {
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::CallGeneric(FunctionInstantiationIndex(0)),
+    ];
+    let mut module = make_module(code);
+    add_generic_function_with_parameters(&mut module, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::CALL_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_call_generic_too_few_args() {
+    let code = vec![Bytecode::CallGeneric(FunctionInstantiationIndex(0))];
+    let mut module = make_module(code);
+    add_generic_function_with_parameters(&mut module, SignatureToken::U32);
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
