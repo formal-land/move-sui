@@ -1,6 +1,7 @@
 use move_binary_format::file_format::{
-    empty_module, Bytecode, CodeUnit, FunctionDefinition, FunctionDefinitionIndex, FunctionHandle,
-    IdentifierIndex, ModuleHandleIndex, SignatureIndex, StructDefinitionIndex,
+    empty_module, Bytecode, CodeUnit, FieldInstantiationIndex, FunctionDefinition,
+    FunctionDefinitionIndex, FunctionHandle, IdentifierIndex, ModuleHandleIndex, SignatureIndex,
+    StructDefinitionIndex,
 };
 
 use move_core_types::{u256::U256, vm_status::StatusCode};
@@ -8,10 +9,10 @@ use move_core_types::{u256::U256, vm_status::StatusCode};
 use move_binary_format::{
     file_format::{
         AbilitySet, Constant, ConstantPoolIndex, FieldDefinition, FieldHandle, FieldHandleIndex,
-        FunctionHandleIndex, FunctionInstantiation, FunctionInstantiationIndex, Signature,
-        SignatureToken, StructDefInstantiation, StructDefInstantiationIndex, StructDefinition,
-        StructFieldInformation, StructHandle, StructHandleIndex, StructTypeParameter,
-        TypeSignature,
+        FieldInstantiation, FunctionHandleIndex, FunctionInstantiation, FunctionInstantiationIndex,
+        Signature, SignatureToken, StructDefInstantiation, StructDefInstantiationIndex,
+        StructDefinition, StructFieldInformation, StructHandle, StructHandleIndex,
+        StructTypeParameter, TypeSignature,
     },
     CompiledModule,
 };
@@ -164,6 +165,44 @@ fn add_native_struct(module: &mut CompiledModule) {
     }];
 }
 
+fn add_native_struct_generic(module: &mut CompiledModule, type_parameter: SignatureToken) {
+    let struct_def = StructDefinition {
+        struct_handle: StructHandleIndex(0),
+        field_information: StructFieldInformation::Native,
+    };
+
+    let struct_handle = StructHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        abilities: AbilitySet::EMPTY,
+        type_parameters: vec![StructTypeParameter {
+            constraints: AbilitySet::PRIMITIVES,
+            is_phantom: false,
+        }],
+    };
+
+    module.struct_defs.push(struct_def);
+    module.struct_handles.push(struct_handle);
+    module
+        .struct_def_instantiations
+        .push(StructDefInstantiation {
+            def: StructDefinitionIndex(0),
+            type_parameters: SignatureIndex(3),
+        });
+
+    module.signatures.push(Signature(vec![type_parameter]));
+
+    module.field_handles = vec![FieldHandle {
+        owner: StructDefinitionIndex(0),
+        field: 0,
+    }];
+
+    module.field_instantiations.push(FieldInstantiation {
+        handle: FieldHandleIndex(0),
+        type_parameters: SignatureIndex(3),
+    });
+}
+
 fn add_simple_struct(module: &mut CompiledModule) {
     let struct_def = StructDefinition {
         struct_handle: StructHandleIndex(0),
@@ -259,6 +298,11 @@ fn add_simple_struct_generic_with_abilities(
         owner: StructDefinitionIndex(0),
         field: 0,
     }];
+
+    module.field_instantiations.push(FieldInstantiation {
+        handle: FieldHandleIndex(0),
+        type_parameters: SignatureIndex(3),
+    });
 }
 
 fn get_fun_context(module: &CompiledModule) -> FunctionContext {
@@ -1468,6 +1512,109 @@ fn test_imm_borrow_field_no_arg() {
     let code = vec![Bytecode::ImmBorrowField(FieldHandleIndex(0))];
     let mut module = make_module_with_local(code, SignatureToken::Struct(StructHandleIndex(0)));
     add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
+fn test_imm_borrow_field_generic_correct_type() {
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::ImmBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module: CompiledModule = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_imm_borrow_field_generic_wrong_type() {
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::ImmBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+fn test_imm_borrow_field_generic_mismatched_types() {
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::ImmBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::U64);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+fn test_imm_borrow_field_generic_bad_field() {
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::ImmBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_native_struct_generic(&mut module, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_BAD_FIELD_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_imm_borrow_field_generic_no_arg() {
+    let code = vec![Bytecode::ImmBorrowFieldGeneric(FieldInstantiationIndex(0))];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
