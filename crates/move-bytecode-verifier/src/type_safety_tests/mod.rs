@@ -197,6 +197,26 @@ fn add_simple_struct(module: &mut CompiledModule) {
     ];
 }
 
+fn add_simple_struct_with_abilities(module: &mut CompiledModule, abilities: AbilitySet) {
+    let struct_def = StructDefinition {
+        struct_handle: StructHandleIndex(0),
+        field_information: StructFieldInformation::Declared(vec![FieldDefinition {
+            name: IdentifierIndex(5),
+            signature: TypeSignature(SignatureToken::U32),
+        }]),
+    };
+
+    let struct_handle = StructHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        abilities: abilities,
+        type_parameters: vec![],
+    };
+
+    module.struct_defs.push(struct_def);
+    module.struct_handles.push(struct_handle);
+}
+
 fn add_simple_struct_generic_with_abilities(
     module: &mut CompiledModule,
     abilities: AbilitySet,
@@ -235,26 +255,6 @@ fn add_simple_struct_generic_with_abilities(
         owner: StructDefinitionIndex(0),
         field: 0,
     }];
-}
-
-fn add_simple_struct_with_abilities(module: &mut CompiledModule, abilities: AbilitySet) {
-    let struct_def = StructDefinition {
-        struct_handle: StructHandleIndex(0),
-        field_information: StructFieldInformation::Declared(vec![FieldDefinition {
-            name: IdentifierIndex(5),
-            signature: TypeSignature(SignatureToken::U32),
-        }]),
-    };
-
-    let struct_handle = StructHandle {
-        module: ModuleHandleIndex(0),
-        name: IdentifierIndex(0),
-        abilities: abilities,
-        type_parameters: vec![],
-    };
-
-    module.struct_defs.push(struct_def);
-    module.struct_handles.push(struct_handle);
 }
 
 fn get_fun_context(module: &CompiledModule) -> FunctionContext {
@@ -2427,6 +2427,67 @@ fn test_exists_deprecated_no_arg() {
     let code = vec![Bytecode::ExistsDeprecated(StructDefinitionIndex(0))];
     let mut module = make_module_with_local(code, SignatureToken::Address);
     add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
+fn test_exists_generic_deprecated_correct_type() {
+    let code = vec![
+        Bytecode::CopyLoc(0),
+        Bytecode::ExistsGenericDeprecated(StructDefInstantiationIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_generic_with_abilities(&mut module, AbilitySet::ALL, SignatureToken::U32);
+    let fun_context: FunctionContext<'_> = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_exists_generic_deprecated_wrong_type() {
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::ExistsGenericDeprecated(StructDefInstantiationIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_generic_with_abilities(&mut module, AbilitySet::ALL, SignatureToken::U32);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::EXISTS_WITHOUT_KEY_ABILITY_OR_BAD_ARGUMENT
+    );
+}
+
+#[test]
+fn test_exists_generic_deprecated_no_key() {
+    let code = vec![
+        Bytecode::CopyLoc(0),
+        Bytecode::ExistsGenericDeprecated(StructDefInstantiationIndex(0)),
+    ];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::EXISTS_WITHOUT_KEY_ABILITY_OR_BAD_ARGUMENT
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_exists_generic_deprecated_no_arg() {
+    let code = vec![Bytecode::ExistsGenericDeprecated(
+        StructDefInstantiationIndex(0),
+    )];
+    let mut module = make_module_with_local(code, SignatureToken::Address);
+    add_simple_struct_generic_with_abilities(&mut module, AbilitySet::ALL, SignatureToken::U32);
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
