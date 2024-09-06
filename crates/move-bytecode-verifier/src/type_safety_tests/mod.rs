@@ -47,7 +47,11 @@ fn make_module_with_ret(code: Vec<Bytecode>, return_: SignatureToken) -> Compile
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
-    module.signatures = vec![Signature(vec![]), Signature(vec![return_]), Signature(vec![])];
+    module.signatures = vec![
+        Signature(vec![]),
+        Signature(vec![return_]),
+        Signature(vec![]),
+    ];
 
     module
 }
@@ -2887,6 +2891,76 @@ fn test_borrow_global_deprecated_no_arg() {
         let code = vec![instr];
         let mut module = make_module_with_local(code, SignatureToken::Address);
         add_simple_struct_with_abilities(&mut module, AbilitySet::ALL);
+        let fun_context = get_fun_context(&module);
+        let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    }
+}
+
+#[test]
+fn test_borrow_global_generic_deprecated_correct_type() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+        Bytecode::MutBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+    ] {
+        let code = vec![Bytecode::CopyLoc(0), instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_generic_with_abilities(&mut module, AbilitySet::ALL, SignatureToken::U32);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert!(result.is_ok());
+    }
+}
+
+#[test]
+fn test_borrow_global_generic_deprecated_wrong_type() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+        Bytecode::MutBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+    ] {
+        let code = vec![Bytecode::LdU64(42), instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_generic_with_abilities(&mut module, AbilitySet::ALL, SignatureToken::U32);
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BORROWGLOBAL_TYPE_MISMATCH_ERROR
+        );
+    }
+}
+
+#[test]
+fn test_borrow_global_generic_deprecated_no_key() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+        Bytecode::MutBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+    ] {
+        let code = vec![Bytecode::CopyLoc(0), instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_generic_with_abilities(
+            &mut module,
+            AbilitySet::PRIMITIVES,
+            SignatureToken::U32,
+        );
+        let fun_context = get_fun_context(&module);
+        let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+        assert_eq!(
+            result.unwrap_err().major_status(),
+            StatusCode::BORROWGLOBAL_WITHOUT_KEY_ABILITY
+        );
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_borrow_global_generic_deprecated_no_arg() {
+    for instr in vec![
+        Bytecode::ImmBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+        Bytecode::MutBorrowGlobalGenericDeprecated(StructDefInstantiationIndex(0)),
+    ] {
+        let code = vec![instr];
+        let mut module = make_module_with_local(code, SignatureToken::Address);
+        add_simple_struct_generic_with_abilities(&mut module, AbilitySet::ALL, SignatureToken::U32);
         let fun_context = get_fun_context(&module);
         let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
     }
