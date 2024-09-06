@@ -47,7 +47,7 @@ fn make_module_with_ret(code: Vec<Bytecode>, return_: SignatureToken) -> Compile
     let mut module = empty_module();
     module.function_handles.push(fun_handle);
     module.function_defs.push(fun_def);
-    module.signatures = vec![Signature(vec![]), Signature(vec![return_])];
+    module.signatures = vec![Signature(vec![]), Signature(vec![return_]), Signature(vec![])];
 
     module
 }
@@ -93,8 +93,8 @@ fn add_function_with_parameters(module: &mut CompiledModule, parameters: Signatu
     let fun_handle = FunctionHandle {
         module: ModuleHandleIndex(0),
         name: IdentifierIndex(0),
-        parameters: SignatureIndex(2),
-        return_: SignatureIndex(3),
+        parameters: SignatureIndex(3),
+        return_: SignatureIndex(4),
         type_parameters: vec![],
     };
 
@@ -117,14 +117,14 @@ fn add_generic_function_with_parameters(
     let fun_handle = FunctionHandle {
         module: ModuleHandleIndex(0),
         name: IdentifierIndex(0),
-        parameters: SignatureIndex(3),
-        return_: SignatureIndex(4),
+        parameters: SignatureIndex(4),
+        return_: SignatureIndex(5),
         type_parameters: vec![AbilitySet::PRIMITIVES],
     };
 
     let fun_inst = FunctionInstantiation {
         handle: FunctionHandleIndex(1),
-        type_parameters: SignatureIndex(2),
+        type_parameters: SignatureIndex(3),
     };
 
     module.signatures.push(Signature(vec![type_parameter]));
@@ -246,7 +246,7 @@ fn add_simple_struct_generic_with_abilities(
         .struct_def_instantiations
         .push(StructDefInstantiation {
             def: StructDefinitionIndex(0),
-            type_parameters: SignatureIndex(2),
+            type_parameters: SignatureIndex(3),
         });
 
     module.signatures.push(Signature(vec![type_parameter]));
