@@ -9,7 +9,8 @@ use move_binary_format::{
     file_format::{
         AbilitySet, Constant, ConstantPoolIndex, FieldDefinition, FieldHandle, FieldHandleIndex,
         FunctionHandleIndex, FunctionInstantiation, FunctionInstantiationIndex, Signature,
-        SignatureToken, StructDefinition, StructFieldInformation, StructHandle, StructHandleIndex,
+        SignatureToken, StructDefInstantiation, StructDefInstantiationIndex, StructDefinition,
+        StructFieldInformation, StructHandle, StructHandleIndex, StructTypeParameter,
         TypeSignature,
     },
     CompiledModule,
@@ -194,6 +195,46 @@ fn add_simple_struct(module: &mut CompiledModule) {
             field: 1,
         },
     ];
+}
+
+fn add_simple_struct_generic_with_abilities(
+    module: &mut CompiledModule,
+    abilities: AbilitySet,
+    type_parameter: SignatureToken,
+) {
+    let struct_def = StructDefinition {
+        struct_handle: StructHandleIndex(0),
+        field_information: StructFieldInformation::Declared(vec![FieldDefinition {
+            name: IdentifierIndex(5),
+            signature: TypeSignature(SignatureToken::TypeParameter(0)),
+        }]),
+    };
+
+    let struct_handle = StructHandle {
+        module: ModuleHandleIndex(0),
+        name: IdentifierIndex(0),
+        abilities: abilities,
+        type_parameters: vec![StructTypeParameter {
+            constraints: AbilitySet::PRIMITIVES,
+            is_phantom: false,
+        }],
+    };
+
+    module.struct_defs.push(struct_def);
+    module.struct_handles.push(struct_handle);
+    module
+        .struct_def_instantiations
+        .push(StructDefInstantiation {
+            def: StructDefinitionIndex(0),
+            type_parameters: SignatureIndex(2),
+        });
+
+    module.signatures.push(Signature(vec![type_parameter]));
+
+    module.field_handles = vec![FieldHandle {
+        owner: StructDefinitionIndex(0),
+        field: 0,
+    }];
 }
 
 fn add_simple_struct_with_abilities(module: &mut CompiledModule, abilities: AbilitySet) {
@@ -812,6 +853,71 @@ fn test_pack_too_few_args() {
 }
 
 #[test]
+fn test_pack_generic_correct_types() {
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::PackGeneric(StructDefInstantiationIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::PackGeneric(StructDefInstantiationIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_pack_generic_mismatched_types() {
+    let code = vec![
+        Bytecode::LdU64(42),
+        Bytecode::PackGeneric(StructDefInstantiationIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::PACK_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_pack_generic_too_few_args() {
+    let code = vec![Bytecode::PackGeneric(StructDefInstantiationIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
 fn test_unpack_correct_types() {
     let code = vec![
         Bytecode::LdU32(42),
@@ -848,6 +954,58 @@ fn test_unpack_no_arg() {
     let code = vec![Bytecode::Unpack(StructDefinitionIndex(0))];
     let mut module: CompiledModule = make_module(code);
     add_simple_struct(&mut module);
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
+fn test_unpack_generic_correct_types() {
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::PackGeneric(StructDefInstantiationIndex(0)),
+        Bytecode::UnpackGeneric(StructDefInstantiationIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_unpack_generic_wrong_type() {
+    let code = vec![
+        Bytecode::LdU32(42),
+        Bytecode::UnpackGeneric(StructDefInstantiationIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::UNPACK_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_unpack_generic_no_arg() {
+    let code = vec![Bytecode::UnpackGeneric(StructDefInstantiationIndex(0))];
+    let mut module: CompiledModule = make_module(code);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U32,
+    );
     let fun_context = get_fun_context(&module);
     let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
 }
