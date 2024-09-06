@@ -1704,6 +1704,130 @@ fn test_mut_borrow_field_no_arg() {
 }
 
 #[test]
+fn test_mut_borrow_field_generic_correct_type() {
+    let code = vec![
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::MutBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_mut_borrow_field_generic_wrong_type() {
+    let code = vec![
+        Bytecode::LdTrue,
+        Bytecode::MutBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
+    );
+
+    let code = vec![
+        Bytecode::ImmBorrowLoc(0),
+        Bytecode::MutBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+fn test_mut_borrow_field_generic_mismatched_types() {
+    let code = vec![
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::MutBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let mut module: CompiledModule = make_module_with_local(code, SignatureToken::U64);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_TYPE_MISMATCH_ERROR
+    );
+}
+
+#[test]
+fn test_mut_borrow_field_generic_bad_field() {
+    let code = vec![
+        Bytecode::MutBorrowLoc(0),
+        Bytecode::MutBorrowFieldGeneric(FieldInstantiationIndex(0)),
+    ];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_native_struct_generic(&mut module, SignatureToken::U64);
+    let fun_context = get_fun_context(&module);
+    let result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+    assert_eq!(
+        result.unwrap_err().major_status(),
+        StatusCode::BORROWFIELD_BAD_FIELD_ERROR
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_mut_borrow_field_generic_no_arg() {
+    let code = vec![Bytecode::MutBorrowFieldGeneric(FieldInstantiationIndex(0))];
+    let signature = SignatureToken::StructInstantiation(Box::new((
+        StructHandleIndex(0),
+        vec![SignatureToken::U64],
+    )));
+    let mut module = make_module_with_local(code, signature);
+    add_simple_struct_generic_with_abilities(
+        &mut module,
+        AbilitySet::PRIMITIVES,
+        SignatureToken::U64,
+    );
+    let fun_context = get_fun_context(&module);
+    let _result = type_safety::verify(&module, &fun_context, &mut DummyMeter);
+}
+
+#[test]
 fn test_ret_correct_type() {
     let code = vec![Bytecode::LdU32(42), Bytecode::Ret];
     let module = make_module_with_ret(code, SignatureToken::U32);
